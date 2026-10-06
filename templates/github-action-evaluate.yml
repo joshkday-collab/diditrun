@@ -1,0 +1,16 @@
+name: DidItRun evaluate
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sweep overdue + meta
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.DIDITRUN_CRON_SECRET }}" \
+            "${{ vars.DIDITRUN_URL }}/api/cron/evaluate"

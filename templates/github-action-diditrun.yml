@@ -1,0 +1,48 @@
+# Heartbeat a DidItRun check from GitHub Actions.
+# Store DIDITRUN_CHECK_ID as a repository secret.
+# Optional: DIDITRUN_URL as a variable (defaults in the env block).
+#
+# Week-1 stale/zero: pass count=0 when the job processed nothing.
+# Unchanged-count-across-N-periods is week 2+.
+
+name: DidItRun heartbeat
+
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        description: "Record count from this run (omit-equivalent: leave empty for a plain heartbeat)"
+        required: false
+        default: "0"
+  schedule:
+    - cron: "0 * * * *"
+  workflow_run:
+    workflows: ["*"]
+    types: [completed]
+
+jobs:
+  ping:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.name != 'DidItRun heartbeat' }}
+    runs-on: ubuntu-latest
+    env:
+      DIDITRUN_URL: ${{ vars.DIDITRUN_URL || 'https://YOUR-APP.vercel.app' }}
+      CHECK_ID: ${{ secrets.DIDITRUN_CHECK_ID }}
+      COUNT: ${{ github.event.inputs.count }}
+    steps:
+      - name: Require unguessable check id
+        run: |
+          test -n "$CHECK_ID"
+          echo "$CHECK_ID" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+
+      - name: Ping success (with count when provided)
+        if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+        run: |
+          if [ -n "$COUNT" ]; then
+            curl -fsS "${DIDITRUN_URL}/p/${CHECK_ID}?count=${COUNT}"
+          else
+            curl -fsS "${DIDITRUN_URL}/p/${CHECK_ID}"
+          fi
+
+      - name: Ping explicit fail
+        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' }}
+        run: curl -fsS "${DIDITRUN_URL}/p/${CHECK_ID}/fail"
