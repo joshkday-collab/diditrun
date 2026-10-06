@@ -4,6 +4,14 @@ const nextConfig: NextConfig = {
   // Auth cookies + live check state are request-time. Do not prerender a shell
   // that fights the dashboard. Landing still streams fine as a Server Component.
   cacheComponents: false,
+  turbopack: {
+    rules: {
+      "*.css": {
+        loaders: ["@tailwindcss/turbopack"],
+        as: "*.css",
+      },
+    },
+  },
 };
 
 export default nextConfig;
